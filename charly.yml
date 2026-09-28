@@ -1,7 +1,5 @@
-version: 2026.232.0520
 agentteams-element:
     candy:
-        version: 2026.223.1409
         description: |-
             The AgentTeams Element Web client — the static files extracted from the
             higress/element-web:20260216 image, served by a rootless nginx on :8088.
@@ -37,110 +35,110 @@ agentteams-element:
               write: /etc/nginx/nginx.conf
               mode: "0644"
               content: |
-                  worker_processes 2;
-                  pid /tmp/nginx.pid;
-                  error_log /tmp/nginx-error.log;
+                worker_processes 2;
+                pid /tmp/nginx.pid;
+                error_log /tmp/nginx-error.log;
 
-                  events {
-                      worker_connections 1024;
-                  }
+                events {
+                    worker_connections 1024;
+                }
 
-                  http {
-                      include /etc/nginx/mime.types;
-                      default_type application/octet-stream;
-                      sendfile on;
-                      client_body_temp_path /tmp/nginx/client_body;
-                      proxy_temp_path /tmp/nginx/proxy;
-                      fastcgi_temp_path /tmp/nginx/fastcgi;
-                      uwsgi_temp_path /tmp/nginx/uwsgi;
-                      scgi_temp_path /tmp/nginx/scgi;
-                      access_log /tmp/nginx-access.log;
-                      include /etc/nginx/conf.d/*.conf;
-                  }
+                http {
+                    include /etc/nginx/mime.types;
+                    default_type application/octet-stream;
+                    sendfile on;
+                    client_body_temp_path /tmp/nginx/client_body;
+                    proxy_temp_path /tmp/nginx/proxy;
+                    fastcgi_temp_path /tmp/nginx/fastcgi;
+                    uwsgi_temp_path /tmp/nginx/uwsgi;
+                    scgi_temp_path /tmp/nginx/scgi;
+                    access_log /tmp/nginx-access.log;
+                    include /etc/nginx/conf.d/*.conf;
+                }
             - run: write the Element Web nginx server block
               write: /etc/nginx/conf.d/element-web.conf
               mode: "0644"
               content: |
-                  server {
-                      listen 8088;
-                      root /opt/element-web;
-                      index index.html;
+                server {
+                    listen 8088;
+                    root /opt/element-web;
+                    index index.html;
 
-                      # Inject the external browser-bypass script (CSP-safe: script-src 'self')
-                      sub_filter '</head>' '<script src="browser-bypass.js"></script></head>';
-                      sub_filter_once on;
-                      sub_filter_types text/html;
+                    # Inject the external browser-bypass script (CSP-safe: script-src 'self')
+                    sub_filter '</head>' '<script src="browser-bypass.js"></script></head>';
+                    sub_filter_once on;
+                    sub_filter_types text/html;
 
-                      location / {
-                          try_files $uri $uri/ /index.html;
-                      }
+                    location / {
+                        try_files $uri $uri/ /index.html;
+                    }
 
-                      location ~* ^/(config.*\.json|index\.html|i18n|version)$ {
-                          add_header Cache-Control "no-cache";
-                      }
-                  }
+                    location ~* ^/(config.*\.json|index\.html|i18n|version)$ {
+                        add_header Cache-Control "no-cache";
+                    }
+                }
             - run: write the Higress WASM plugin-server nginx block
               write: /etc/nginx/conf.d/plugin-server.conf
               mode: "0644"
               content: |
-                  server {
-                      listen 8002;
-                      listen [::]:8002;
-                      server_name localhost;
+                server {
+                    listen 8002;
+                    listen [::]:8002;
+                    server_name localhost;
 
-                      root /usr/share/nginx/html;
-                      server_tokens off;
+                    root /usr/share/nginx/html;
+                    server_tokens off;
 
-                      location = /healthz {
-                          return 200 'ok';
-                          add_header Content-Type text/plain;
-                      }
+                    location = /healthz {
+                        return 200 'ok';
+                        add_header Content-Type text/plain;
+                    }
 
-                      error_page 500 502 503 504 /50x.html;
-                      location = /50x.html {
-                          root /usr/share/nginx/html;
-                      }
-                  }
+                    error_page 500 502 503 504 /50x.html;
+                    location = /50x.html {
+                        root /usr/share/nginx/html;
+                    }
+                }
             - run: write the browser-bypass script Element Web injects
               write: /opt/element-web/browser-bypass.js
               mode: "0644"
               content: |
-                  window.localStorage.setItem("mx_accepts_unsupported_browser","true");
+                window.localStorage.setItem("mx_accepts_unsupported_browser","true");
             - run: write the rootless element-web start script
               write: /opt/agentteams-element/start-element-web.sh
               mode: "0755"
               content: |
-                  #!/bin/bash
-                  # start-element-web.sh — charly-owned rootless Element Web launcher.
-                  # Regenerates config.json from the deploy env, then execs nginx with
-                  # the rootless config (writable pid + temp paths under /tmp, no
-                  # setuid). Replaces the upstream script's runtime writes to
-                  # /etc/nginx/conf.d, which need root.
-                  set -e
+                #!/bin/bash
+                # start-element-web.sh — charly-owned rootless Element Web launcher.
+                # Regenerates config.json from the deploy env, then execs nginx with
+                # the rootless config (writable pid + temp paths under /tmp, no
+                # setuid). Replaces the upstream script's runtime writes to
+                # /etc/nginx/conf.d, which need root.
+                set -e
 
-                  # The rootless nginx.conf references /tmp/nginx/* temp paths
-                  # (client_body/proxy/fastcgi/uwsgi/scgi) — create the dir before
-                  # nginx starts, or nginx emerg-exits on the missing parent.
-                  mkdir -p /tmp/nginx
+                # The rootless nginx.conf references /tmp/nginx/* temp paths
+                # (client_body/proxy/fastcgi/uwsgi/scgi) — create the dir before
+                # nginx starts, or nginx emerg-exits on the missing parent.
+                mkdir -p /tmp/nginx
 
-                  MATRIX_DOMAIN="${AGENTTEAMS_MATRIX_DOMAIN:-matrix-local.agentteams.io:8080}"
-                  ELEMENT_HOMESERVER_URL="${AGENTTEAMS_ELEMENT_HOMESERVER_URL:-http://${MATRIX_DOMAIN}}"
-                  ELEMENT_BRAND="${AGENTTEAMS_ELEMENT_BRAND:-Element}"
+                MATRIX_DOMAIN="${AGENTTEAMS_MATRIX_DOMAIN:-matrix-local.agentteams.io:8080}"
+                ELEMENT_HOMESERVER_URL="${AGENTTEAMS_ELEMENT_HOMESERVER_URL:-http://${MATRIX_DOMAIN}}"
+                ELEMENT_BRAND="${AGENTTEAMS_ELEMENT_BRAND:-Element}"
 
-                  cat > /opt/element-web/config.json <<EOF
-                  {
-                      "default_server_config": {
-                          "m.homeserver": {
-                              "base_url": "${ELEMENT_HOMESERVER_URL}"
-                          }
-                      },
-                      "brand": "${ELEMENT_BRAND}",
-                      "disable_guests": true,
-                      "disable_custom_urls": false
-                  }
-                  EOF
+                cat > /opt/element-web/config.json <<EOF
+                {
+                    "default_server_config": {
+                        "m.homeserver": {
+                            "base_url": "${ELEMENT_HOMESERVER_URL}"
+                        }
+                    },
+                    "brand": "${ELEMENT_BRAND}",
+                    "disable_guests": true,
+                    "disable_custom_urls": false
+                }
+                EOF
 
-                  exec nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
+                exec nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
             - check: the Element Web static files are extracted
               file:
                 file: /opt/element-web/index.html
