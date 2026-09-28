@@ -1,7 +1,5 @@
-version: 2026.232.0520
 agentteams-element:
     candy:
-        version: 2026.223.1409
         description: |-
             The AgentTeams Element Web client — the static files extracted from the
             higress/element-web:20260216 image, served by a rootless nginx on :8088.
